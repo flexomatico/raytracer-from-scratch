@@ -39,14 +39,25 @@ void Raytracer::Setup() {
     SDL_Color red = {255, 0, 0, 255};
     SDL_Color green = {0, 255, 0, 255};
     SDL_Color blue = {0, 0, 255, 255};
+    SDL_Color yellow = {255, 255, 0, 255};
 
-    Sphere s1(glm::vec3(0, -1, 3), 1, red);
-    Sphere s2(glm::vec3(2, 0, 4), 1, blue);
-    Sphere s3(glm::vec3(-2, 0, 4), 1, green);
+    Sphere s1(glm::vec3(0, -1, 3), 1, red, 500);
+    Sphere s2(glm::vec3(2, 0, 4), 1, blue, 500);
+    Sphere s3(glm::vec3(-2, 0, 4), 1, green, 10);
+    Sphere s4(glm::vec3(0, -5001, 0), 5000, yellow, 1000);
 
     spheres.push_back(s1);
     spheres.push_back(s2);
     spheres.push_back(s3);
+    spheres.push_back(s4);
+
+    Light l1(LightType::Ambient, 0.2f, glm::vec3(0), glm::vec3(0));
+    Light l2(LightType::Point, 0.6f, glm::vec3(2, 1, 0), glm::vec3(0));
+    Light l3(LightType::Directional, 0.2f, glm::vec3(0), glm::vec3(1, 4, 4));
+
+    lights.push_back(l1);
+    lights.push_back(l2);
+    lights.push_back(l3);
 }
 
 void Raytracer::Run() {
@@ -136,7 +147,16 @@ SDL_Color Raytracer::TraceRay(glm::vec3 O, glm::vec3 D, float tMin, float tMax) 
     if(!hasHitSphere) {
         return BACKGROUND_COLOR;
     }
-    return closestSphere.color;
+
+    glm::vec3 P = O + closestT * D;
+    glm::vec3 N = P - closestSphere.center;
+    N = glm::normalize(N);
+    float lightIntensityAtPoint = ComputeLighting(P, N, -D, closestSphere.specular);
+    SDL_Color colorAtPoint = closestSphere.color;
+    colorAtPoint.r = glm::clamp(colorAtPoint.r * lightIntensityAtPoint, 0.0f, 255.0f);
+    colorAtPoint.g = glm::clamp(colorAtPoint.g * lightIntensityAtPoint, 0.0f, 255.0f);
+    colorAtPoint.b = glm::clamp(colorAtPoint.b * lightIntensityAtPoint, 0.0f, 255.0f);
+    return colorAtPoint;
 }
 
 void Raytracer::IntersectRaySphere(glm::vec3 O, glm::vec3 D, Sphere sphere, float& t1, float& t2) {
@@ -155,6 +175,38 @@ void Raytracer::IntersectRaySphere(glm::vec3 O, glm::vec3 D, Sphere sphere, floa
 
     t1 = (-b + glm::sqrt(discriminant)) / (2 * a);
     t2 = (-b - glm::sqrt(discriminant)) / (2 * a);
+}
+
+float Raytracer::ComputeLighting(glm::vec3 P, glm::vec3 N, glm::vec3 V, float s) {
+    float i = .0f;
+    for (auto light : lights) {
+        if (light.type == LightType::Ambient) {
+            i += light.intensity;
+        } else {
+            glm::vec3 L;
+            if (light.type == LightType::Point) {
+                L = light.position - P;
+            } else {
+                L = light.direction;
+            }
+
+            // Diffuse
+            float nDotL = glm::dot(N, L);
+            if (nDotL > 0) {
+                i += light.intensity * nDotL / (glm::length(N) * glm::length(L));
+            }
+
+            // Specular
+            if (s != -1) {
+                glm::vec3 R = 2.0f * N * glm::dot(N, L) - L;
+                float rDotV = glm::dot(R, V);
+                if (rDotV > 0) {
+                    i += light.intensity * glm::pow(rDotV / (glm::length(R) * glm::length(V)), s);
+                }
+            }
+        }
+    }
+    return i;
 }
 
 void Raytracer::Destroy() {
