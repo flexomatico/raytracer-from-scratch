@@ -52,7 +52,7 @@ void Raytracer::Setup() {
     spheres.push_back(s4);
 
     Light l1(LightType::Ambient, 0.2f, glm::vec3(0), glm::vec3(0));
-    Light l2(LightType::Point, 0.6f, glm::vec3(2, 1, 0), glm::vec3(0));
+    Light l2(LightType::Point, 0.6f, glm::vec3(0, 1, 2), glm::vec3(0));
     Light l3(LightType::Directional, 0.2f, glm::vec3(0), glm::vec3(1, 4, 4));
 
     lights.push_back(l1);
@@ -64,6 +64,7 @@ void Raytracer::Run() {
     Setup();
     while (isRunning) {
         ProcessInput();
+        Update();
         Render();
     }
 }
@@ -85,7 +86,7 @@ void Raytracer::ProcessInput() {
     }
 }
 
-void Raytracer::Render() {
+void Raytracer::Update() {
     int timeToWait = MS_PER_FRAME - (SDL_GetTicks() - elapsedTime);
     if (timeToWait > 0 && timeToWait <= MS_PER_FRAME) {
         SDL_Delay(timeToWait); 
@@ -96,6 +97,10 @@ void Raytracer::Render() {
 
     elapsedTime = SDL_GetTicks();
 
+    //lights[1].position += glm::vec3(0, glm::sin(elapsedTime), 0);
+}
+
+void Raytracer::Render() {
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
 

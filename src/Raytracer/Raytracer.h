@@ -64,6 +64,7 @@ class Raytracer {
         void Run();
         void Destroy();
         void ProcessInput();
+        void Update();
         void Render();
         void PutPixel(int x, int y, SDL_Color color);
         glm::vec3 CanvasToViewport(int x, int y);
