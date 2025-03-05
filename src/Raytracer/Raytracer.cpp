@@ -43,10 +43,10 @@ void Raytracer::Setup() {
     SDL_Color blue = {0, 0, 255, 255};
     SDL_Color yellow = {255, 255, 0, 255};
 
-    Sphere s1(glm::vec3(0, -1, 3), 1, red, 500);
-    Sphere s2(glm::vec3(2, 0, 4), 1, blue, 500);
-    Sphere s3(glm::vec3(-2, 0, 4), 1, green, 10);
-    Sphere s4(glm::vec3(0, -5001, 0), 5000, yellow, 1000);
+    Sphere s1(glm::vec3(0, -1, 3), 1, red, 500, 0.2f);
+    Sphere s2(glm::vec3(2, 0, 4), 1, blue, 500, 0.3f);
+    Sphere s3(glm::vec3(-2, 0, 4), 1, green, 10, 0.4f);
+    Sphere s4(glm::vec3(0, -5001, 0), 5000, yellow, 1000, 0.5f);
 
     spheres.push_back(s1);
     spheres.push_back(s2);
@@ -110,7 +110,7 @@ void Raytracer::Render() {
     for (int x = -windowWidth/2; x <= windowWidth/2; x++) {
         for (int y = -windowHeight/2; y <= windowHeight/2; y++) {
             glm::vec3 rayDir = CanvasToViewport(x, y);
-            SDL_Color color = TraceRay(origin, rayDir, (float)viewportDepth, FLT_MAX);
+            SDL_Color color = TraceRay(origin, rayDir, (float)viewportDepth, FLT_MAX, RECURSION_DEPTH);
             PutPixel(x, y, color);
         }
     }
@@ -132,7 +132,7 @@ glm::vec3 Raytracer::CanvasToViewport(int x, int y) {
     return glm::vec3(vX, vY, vZ);
 }
 
-SDL_Color Raytracer::TraceRay(glm::vec3 O, glm::vec3 D, float tMin, float tMax) {
+SDL_Color Raytracer::TraceRay(glm::vec3 O, glm::vec3 D, float tMin, float tMax, unsigned short recursionDepth) {
     float closestT;
     std::optional<Sphere> closestSphere;
     ClosestIntersection(O, D, tMin, tMax, closestT, closestSphere);
@@ -148,6 +148,18 @@ SDL_Color Raytracer::TraceRay(glm::vec3 O, glm::vec3 D, float tMin, float tMax) 
     colorAtPoint.r = glm::clamp(colorAtPoint.r * lightIntensityAtPoint, 0.0f, 255.0f);
     colorAtPoint.g = glm::clamp(colorAtPoint.g * lightIntensityAtPoint, 0.0f, 255.0f);
     colorAtPoint.b = glm::clamp(colorAtPoint.b * lightIntensityAtPoint, 0.0f, 255.0f);
+
+    float r = closestSphere->reflective;
+    if (recursionDepth <= 0 || r <= .0f) {
+        return colorAtPoint;    
+    }
+
+    glm::vec3 R = ReflectRay(-D, N);
+    SDL_Color reflectedColor = TraceRay(P, R, 0.01f, FLT_MAX, recursionDepth - 1); 
+
+    colorAtPoint.r = colorAtPoint.r * (1.0f - r) + reflectedColor.r * r;
+    colorAtPoint.g = colorAtPoint.g * (1.0f - r) + reflectedColor.g * r;
+    colorAtPoint.b = colorAtPoint.b * (1.0f - r) + reflectedColor.b * r;
     return colorAtPoint;
 }
 
@@ -155,7 +167,7 @@ void Raytracer::ClosestIntersection(glm::vec3 O, glm::vec3 D, float tMin, float 
     closestT = tMax;
 
     for (auto sphere : spheres) {
-        float t1, t2 = 0;
+        float t1, t2 = .0f;
         IntersectRaySphere(O, D, sphere, t1, t2);
         if (t1 > tMin && t1 < tMax && t1 < closestT) {
             closestT = t1;
@@ -173,17 +185,17 @@ void Raytracer::IntersectRaySphere(glm::vec3 O, glm::vec3 D, Sphere sphere, floa
     glm::vec3 CO = O - sphere.center;
     
     float a = glm::dot(D, D);
-    float b = 2 * glm::dot(CO, D);
+    float b = 2.0f * glm::dot(CO, D);
     float c = glm::dot(CO, CO) - r * r;
 
-    float discriminant = b * b - 4 * a * c;
-    if (discriminant < 0) {
+    float discriminant = b * b - 4.0f * a * c;
+    if (discriminant < .0f) {
         t1 = t2 = FLT_MAX;
         return;
     }
 
-    t1 = (-b + glm::sqrt(discriminant)) / (2 * a);
-    t2 = (-b - glm::sqrt(discriminant)) / (2 * a);
+    t1 = (-b + glm::sqrt(discriminant)) / (2.0f * a);
+    t2 = (-b - glm::sqrt(discriminant)) / (2.0f * a);
 }
 
 float Raytracer::ComputeLighting(glm::vec3 P, glm::vec3 N, glm::vec3 V, float s) {
@@ -212,21 +224,25 @@ float Raytracer::ComputeLighting(glm::vec3 P, glm::vec3 N, glm::vec3 V, float s)
 
             // Diffuse
             float nDotL = glm::dot(N, L);
-            if (nDotL > 0) {
+            if (nDotL > .0f) {
                 i += light.intensity * nDotL / (glm::length(N) * glm::length(L));
             }
 
             // Specular
-            if (s != -1) {
-                glm::vec3 R = 2.0f * N * glm::dot(N, L) - L;
+            if (s != -1.0f) {
+                glm::vec3 R = ReflectRay(L, N);
                 float rDotV = glm::dot(R, V);
-                if (rDotV > 0) {
+                if (rDotV > .0f) {
                     i += light.intensity * glm::pow(rDotV / (glm::length(R) * glm::length(V)), s);
                 }
             }
         }
     }
     return i;
+}
+
+glm::vec3 Raytracer::ReflectRay(glm::vec3 R, glm::vec3 N) {
+    return 2.0f * N * glm::dot(N, R) - R;
 }
 
 void Raytracer::Destroy() {

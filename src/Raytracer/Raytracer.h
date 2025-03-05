@@ -7,21 +7,24 @@
 
 const int FPS = 30;
 const int MS_PER_FRAME = 1000 / FPS;
-const SDL_Color BACKGROUND_COLOR = {255, 255, 255, 255};
+const SDL_Color BACKGROUND_COLOR = {0, 0, 0, 255};
+const unsigned short RECURSION_DEPTH = 1;
 
 struct Sphere {
     glm::vec3 center;
     float radius;
     SDL_Color color;
     float specular;
+    float reflective;
 
     Sphere(){};
 
-    Sphere(glm::vec3 center, float radius, SDL_Color color, float specular = -1) {
+    Sphere(glm::vec3 center, float radius, SDL_Color color, float specular = -1, float reflective = .0f) {
         this->center = center;
         this->radius = radius;
         this->color = color;
         this->specular = specular;
+        this->reflective = reflective;
     }
 };
 
@@ -69,10 +72,11 @@ class Raytracer {
         void Render();
         void PutPixel(int x, int y, SDL_Color color);
         glm::vec3 CanvasToViewport(int x, int y);
-        SDL_Color TraceRay(glm::vec3 O, glm::vec3 D, float tMin, float tMax);
+        SDL_Color TraceRay(glm::vec3 O, glm::vec3 D, float tMin, float tMax, unsigned short recursionDepth);
         void IntersectRaySphere(glm::vec3 O, glm::vec3 D, Sphere sphere, float& t1, float& t2);
         float ComputeLighting(glm::vec3 P, glm::vec3 N, glm::vec3 V, float s);
         void ClosestIntersection(glm::vec3 O, glm::vec3 D, float tMin, float tMax, float& closestT, std::optional<Sphere>& closestSphere);
+        glm::vec3 ReflectRay(glm::vec3 R, glm::vec3 N);
 
         int windowWidth;
         int windowHeight;
