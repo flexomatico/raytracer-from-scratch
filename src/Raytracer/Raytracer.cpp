@@ -1,4 +1,6 @@
 #include "Raytracer.h"
+#include "glm/common.hpp"
+#include <cfloat>
 #include <iostream>
 
 void Raytracer::Initialize() {
@@ -131,9 +133,26 @@ glm::vec3 Raytracer::CanvasToViewport(int x, int y) {
 }
 
 SDL_Color Raytracer::TraceRay(glm::vec3 O, glm::vec3 D, float tMin, float tMax) {
-    float closestT = tMax;
-    bool hasHitSphere = false;
-    Sphere closestSphere;
+    float closestT;
+    std::optional<Sphere> closestSphere;
+    ClosestIntersection(O, D, tMin, tMax, closestT, closestSphere);
+    if (!closestSphere) {
+         return BACKGROUND_COLOR;
+    }                  
+
+    glm::vec3 P = O + closestT * D;
+    glm::vec3 N = P - closestSphere->center;
+    N = glm::normalize(N);
+    float lightIntensityAtPoint = ComputeLighting(P, N, -D, closestSphere->specular);
+    SDL_Color colorAtPoint = closestSphere->color;
+    colorAtPoint.r = glm::clamp(colorAtPoint.r * lightIntensityAtPoint, 0.0f, 255.0f);
+    colorAtPoint.g = glm::clamp(colorAtPoint.g * lightIntensityAtPoint, 0.0f, 255.0f);
+    colorAtPoint.b = glm::clamp(colorAtPoint.b * lightIntensityAtPoint, 0.0f, 255.0f);
+    return colorAtPoint;
+}
+
+void Raytracer::ClosestIntersection(glm::vec3 O, glm::vec3 D, float tMin, float tMax, float& closestT, std::optional<Sphere>& closestSphere) {
+    closestT = tMax;
 
     for (auto sphere : spheres) {
         float t1, t2 = 0;
@@ -141,27 +160,12 @@ SDL_Color Raytracer::TraceRay(glm::vec3 O, glm::vec3 D, float tMin, float tMax) 
         if (t1 > tMin && t1 < tMax && t1 < closestT) {
             closestT = t1;
             closestSphere = sphere;
-            hasHitSphere = true;
         }
         if (t2 > tMin && t2 < tMax && t2 < closestT) {
             closestT = t2;
             closestSphere = sphere;
-            hasHitSphere = true;
         }
     }
-    if(!hasHitSphere) {
-        return BACKGROUND_COLOR;
-    }
-
-    glm::vec3 P = O + closestT * D;
-    glm::vec3 N = P - closestSphere.center;
-    N = glm::normalize(N);
-    float lightIntensityAtPoint = ComputeLighting(P, N, -D, closestSphere.specular);
-    SDL_Color colorAtPoint = closestSphere.color;
-    colorAtPoint.r = glm::clamp(colorAtPoint.r * lightIntensityAtPoint, 0.0f, 255.0f);
-    colorAtPoint.g = glm::clamp(colorAtPoint.g * lightIntensityAtPoint, 0.0f, 255.0f);
-    colorAtPoint.b = glm::clamp(colorAtPoint.b * lightIntensityAtPoint, 0.0f, 255.0f);
-    return colorAtPoint;
 }
 
 void Raytracer::IntersectRaySphere(glm::vec3 O, glm::vec3 D, Sphere sphere, float& t1, float& t2) {
@@ -184,6 +188,7 @@ void Raytracer::IntersectRaySphere(glm::vec3 O, glm::vec3 D, Sphere sphere, floa
 
 float Raytracer::ComputeLighting(glm::vec3 P, glm::vec3 N, glm::vec3 V, float s) {
     float i = .0f;
+    float tMax;
     for (auto light : lights) {
         if (light.type == LightType::Ambient) {
             i += light.intensity;
@@ -191,8 +196,18 @@ float Raytracer::ComputeLighting(glm::vec3 P, glm::vec3 N, glm::vec3 V, float s)
             glm::vec3 L;
             if (light.type == LightType::Point) {
                 L = light.position - P;
+                tMax = 1.0f;
             } else {
                 L = light.direction;
+                tMax = FLT_MAX;
+            }
+
+            // Shadow check
+            float shadowT;
+            std::optional<Sphere> shadowSphere;
+            ClosestIntersection(P, L, 0.001f, tMax, shadowT, shadowSphere);
+            if (shadowSphere) {
+                continue;
             }
 
             // Diffuse

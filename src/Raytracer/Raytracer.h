@@ -3,6 +3,7 @@
 
 #include <glm/glm.hpp>
 #include <SDL2/SDL.h>
+#include <optional>
 
 const int FPS = 30;
 const int MS_PER_FRAME = 1000 / FPS;
@@ -71,6 +72,7 @@ class Raytracer {
         SDL_Color TraceRay(glm::vec3 O, glm::vec3 D, float tMin, float tMax);
         void IntersectRaySphere(glm::vec3 O, glm::vec3 D, Sphere sphere, float& t1, float& t2);
         float ComputeLighting(glm::vec3 P, glm::vec3 N, glm::vec3 V, float s);
+        void ClosestIntersection(glm::vec3 O, glm::vec3 D, float tMin, float tMax, float& closestT, std::optional<Sphere>& closestSphere);
 
         int windowWidth;
         int windowHeight;
