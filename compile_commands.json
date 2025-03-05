@@ -1,0 +1,34 @@
+[
+  {
+    "arguments": [
+      "/usr/bin/g++",
+      "-c",
+      "-Wall",
+      "-Wfatal-errors",
+      "-std=c++17",
+      "-I./libs/",
+      "-o",
+      "raytracer",
+      "./src/main.cpp"
+    ],
+    "directory": "/home/felix/Documents/code/raytracer-from-scratch",
+    "file": "/home/felix/Documents/code/raytracer-from-scratch/src/main.cpp",
+    "output": "/home/felix/Documents/code/raytracer-from-scratch/raytracer"
+  },
+  {
+    "arguments": [
+      "/usr/bin/g++",
+      "-c",
+      "-Wall",
+      "-Wfatal-errors",
+      "-std=c++17",
+      "-I./libs/",
+      "-o",
+      "raytracer",
+      "./src/Raytracer/Raytracer.cpp"
+    ],
+    "directory": "/home/felix/Documents/code/raytracer-from-scratch",
+    "file": "/home/felix/Documents/code/raytracer-from-scratch/src/Raytracer/Raytracer.cpp",
+    "output": "/home/felix/Documents/code/raytracer-from-scratch/raytracer"
+  }
+]
